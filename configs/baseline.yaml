@@ -1,0 +1,77 @@
+# Baseline YOLOv8 Training Configuration for LTDv2 Dataset
+
+experiment_name: "baseline_yolov8m"
+tags:
+  - baseline
+  - yolov8m
+  - thermal
+
+# Number of classes (LTDv2 has 5 classes including background)
+num_classes: 5
+class_names:
+  - background
+  - person
+  - bicycle
+  - motorcycle
+  - vehicle
+
+# Model configuration
+model:
+  name: yolov8m  # Options: yolov8n, yolov8s, yolov8m, yolov8l, yolov8x
+  pretrained: true
+  device: null  # Auto-detect (cuda if available)
+  conf_threshold: 0.25
+  iou_threshold: 0.45
+
+# Training configuration
+training:
+  data_yaml: "data/ltdv2_full/data.yaml"  # Path to YOLO data configuration (LTDv2 full dataset)
+  epochs: 100
+  batch_size: 16
+  img_size: 640
+  save_dir: "runs/train"
+  resume: false
+
+  # Optimizer settings
+  optimizer: "auto"  # auto, SGD, Adam, AdamW
+  lr0: 0.01  # Initial learning rate
+  lrf: 0.01  # Final learning rate (lr0 * lrf)
+  momentum: 0.937  # SGD momentum/Adam beta1
+  weight_decay: 0.0005  # Optimizer weight decay
+
+  # Scheduler settings
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+  # Loss weights
+  box: 7.5  # Box loss gain
+  cls: 0.5  # Class loss gain
+  dfl: 1.5  # DFL loss gain
+
+  # Data augmentation
+  hsv_h: 0.015  # HSV-Hue augmentation (fraction)
+  hsv_s: 0.7  # HSV-Saturation augmentation (fraction)
+  hsv_v: 0.4  # HSV-Value augmentation (fraction)
+  degrees: 0.0  # Rotation (+/- deg)
+  translate: 0.1  # Translation (+/- fraction)
+  scale: 0.5  # Scale (+/- gain)
+  shear: 0.0  # Shear (+/- deg)
+  perspective: 0.0  # Perspective (+/- fraction)
+  flipud: 0.0  # Vertical flip (probability)
+  fliplr: 0.5  # Horizontal flip (probability)
+  mosaic: 1.0  # Mosaic augmentation (probability)
+  mixup: 0.0  # MixUp augmentation (probability)
+  copy_paste: 0.0  # Copy-paste augmentation (probability)
+
+  # Training settings
+  patience: 50  # Early stopping patience (epochs)
+  save_period: 10  # Save checkpoint every N epochs
+  workers: 8  # Number of worker threads
+  amp: true  # Automatic Mixed Precision
+  fraction: 1.0  # Dataset fraction to train on
+
+# Validation configuration
+validation:
+  batch_size: 16
+  img_size: 640

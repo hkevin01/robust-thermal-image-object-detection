@@ -1,0 +1,53 @@
+# GitHub Copilot Configuration
+# Project-specific settings for AI assistance
+
+project:
+  name: "Robust Thermal-Image Object Detection"
+  type: "python-ml"
+  framework: "pytorch"
+  
+context:
+  - "This is a competition project for WACV 2026 RWS Challenge"
+  - "Focus on thermal imagery object detection with temporal consistency"
+  - "Dataset: LTDv2 with 1M+ frames, 4 classes (Person, Bicycle, Motorcycle, Vehicle)"
+  - "Evaluation: mAP@0.5 × Coefficient of Variation"
+  - "Key challenge: Handle thermal drift across 8 months of data"
+
+coding_standards:
+  python:
+    style_guide: "PEP 8"
+    formatter: "black"
+    line_length: 100
+    naming:
+      variables: "snake_case"
+      functions: "snake_case"
+      classes: "PascalCase"
+      constants: "UPPER_CASE"
+    type_hints: true
+    docstrings: "Google style"
+
+best_practices:
+  - "Add comprehensive error handling"
+  - "Include type hints for all function signatures"
+  - "Write docstrings for all public functions and classes"
+  - "Handle boundary conditions explicitly"
+  - "Implement proper logging"
+  - "Add input validation"
+  - "Memory-efficient data loading"
+  - "GPU memory management"
+
+patterns:
+  - "Use PyTorch DataLoader for data handling"
+  - "Implement custom Dataset classes"
+  - "Use configuration files (YAML) for hyperparameters"
+  - "Track experiments with W&B or MLflow"
+  - "Save checkpoints regularly"
+  - "Implement early stopping"
+  - "Use mixed precision training"
+
+priorities:
+  - "Temporal consistency (minimize CoV)"
+  - "High mAP@0.5 performance"
+  - "Robust handling of weather variations"
+  - "Efficient memory usage"
+  - "Reproducibility"

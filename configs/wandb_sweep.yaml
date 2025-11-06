@@ -1,0 +1,85 @@
+# W&B Sweep Configuration for Hyperparameter Tuning
+
+program: src/training/train.py
+method: bayes  # Options: grid, random, bayes
+metric:
+  name: eval_map50
+  goal: maximize
+
+parameters:
+  # Model selection
+  model.name:
+    values: [yolov8s, yolov8m, yolov8l]
+
+  # Learning rate
+  training.lr0:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.01
+
+  # Batch size
+  training.batch_size:
+    values: [8, 16, 32]
+
+  # Image size
+  training.img_size:
+    values: [640, 800, 1024]
+
+  # Augmentation strength
+  training.hsv_h:
+    distribution: uniform
+    min: 0.0
+    max: 0.03
+
+  training.hsv_s:
+    distribution: uniform
+    min: 0.5
+    max: 0.9
+
+  training.hsv_v:
+    distribution: uniform
+    min: 0.2
+    max: 0.6
+
+  training.degrees:
+    distribution: uniform
+    min: 0.0
+    max: 15.0
+
+  training.translate:
+    distribution: uniform
+    min: 0.05
+    max: 0.2
+
+  training.scale:
+    distribution: uniform
+    min: 0.3
+    max: 0.7
+
+  training.mosaic:
+    values: [0.0, 0.5, 1.0]
+
+  training.mixup:
+    values: [0.0, 0.1, 0.2]
+
+  # Loss weights
+  training.box:
+    distribution: uniform
+    min: 5.0
+    max: 10.0
+
+  training.cls:
+    distribution: uniform
+    min: 0.3
+    max: 0.7
+
+  # Optimizer settings
+  training.weight_decay:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.001
+
+early_terminate:
+  type: hyperband
+  min_iter: 10
+  eta: 2

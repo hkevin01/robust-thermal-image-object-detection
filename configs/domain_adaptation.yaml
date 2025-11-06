@@ -1,0 +1,169 @@
+# Domain Adaptation Configuration
+# Focus on temporal consistency and reducing performance drift across seasons
+
+experiment_name: "thermal_yolo_domain_adaptation"
+
+# Model configuration
+model:
+  name: "yolov8l"  # Large model for better generalization
+  pretrained: true
+  num_classes: 4
+
+# Data configuration
+data:
+  data_yaml: "configs/data.yaml"
+  train_split: "train"
+  val_split: "val"
+  test_split: "test"
+  use_metadata: true
+  metadata_file: "data/ltdv2/metadata.csv"
+
+# Training configuration
+training:
+  epochs: 200
+  batch_size: 12  # Smaller batch for larger model
+  image_size: 640
+  device: "0"
+  workers: 8
+  patience: 40
+  save_period: 10
+
+# Domain Adaptation Strategy
+domain_adaptation:
+  method: "temporal_ensemble"  # Options: temporal_ensemble, adversarial, meta_learning
+  
+  # Temporal consistency loss
+  temporal_consistency:
+    enabled: true
+    weight: 0.5  # Loss weight
+    window_size: 3  # Number of consecutive frames/samples
+    similarity_metric: "cosine"  # cosine, l2, kl_div
+  
+  # Domain randomization
+  domain_randomization:
+    enabled: true
+    thermal_range: [-30, 30]
+    weather_conditions: ["clear", "fog", "rain", "snow"]
+    time_of_day: ["day", "night", "dawn", "dusk"]
+  
+  # Progressive learning
+  progressive_learning:
+    enabled: true
+    stages:
+      - epochs: 50
+        domains: ["summer"]
+      - epochs: 50
+        domains: ["summer", "fall"]
+      - epochs: 50
+        domains: ["summer", "fall", "winter"]
+      - epochs: 50
+        domains: ["summer", "fall", "winter", "spring"]
+
+# Optimizer settings (with domain-aware scheduling)
+optimizer:
+  name: "AdamW"
+  lr0: 0.0005  # Lower initial LR for stable adaptation
+  lrf: 0.001
+  momentum: 0.937
+  weight_decay: 0.001  # Higher weight decay for regularization
+  warmup_epochs: 5
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+# Loss weights
+loss:
+  box: 7.5
+  cls: 0.5
+  dfl: 1.5
+  temporal_consistency: 0.5  # New loss term
+
+# Augmentation settings (domain-aware)
+augmentation:
+  # Standard augmentations
+  hsv_h: 0.02
+  hsv_s: 0.8
+  hsv_v: 0.5
+  degrees: 15.0
+  translate: 0.15
+  scale: 0.7
+  shear: 2.0
+  perspective: 0.0001
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.2
+  copy_paste: 0.15
+  
+  # Domain-specific augmentations
+  auto_augment: "randaugment"  # AutoAugment, RandAugment
+  erasing: 0.1  # Random erasing probability
+
+# Multi-domain sampling
+multi_domain:
+  enabled: true
+  sampling_strategy: "balanced"  # balanced, weighted, curriculum
+  domain_weights:
+    summer: 1.0
+    fall: 1.2
+    winter: 1.5  # Higher weight for challenging domain
+    spring: 1.0
+
+# Temporal consistency regularization
+temporal_regularization:
+  # Feature-level consistency
+  feature_consistency:
+    enabled: true
+    layer: "neck"  # Where to apply consistency
+    distance_metric: "cosine"
+  
+  # Prediction-level consistency
+  prediction_consistency:
+    enabled: true
+    confidence_threshold: 0.5
+    iou_threshold: 0.45
+
+# Validation settings
+validation:
+  interval: 1
+  compute_temporal_metrics: true
+  per_domain_metrics: true  # Compute metrics per season/domain
+  save_predictions: false
+  
+  # Temporal validation
+  temporal_validation:
+    enabled: true
+    window_size: 5
+    stride: 1
+
+# Logging
+logging:
+  wandb:
+    enabled: true
+    project: "thermal-detection-domain-adaptation"
+    entity: null
+    log_model: true
+    log_interval: 10
+    log_domain_metrics: true
+  tensorboard:
+    enabled: false
+
+# Checkpointing
+checkpoint:
+  save_best: true
+  save_last: true
+  save_domain_specific: true  # Save best model per domain
+  monitor: "challenge_score"
+  mode: "max"
+  
+  # Secondary metrics to track
+  track_metrics:
+    - "map_50"
+    - "temporal_cov"
+    - "domain_gap"  # Max - Min mAP across domains
+
+# Ensemble settings (for inference)
+ensemble:
+  enabled: false
+  models: []  # List of checkpoint paths
+  strategy: "weighted_average"  # voting, average, weighted_average
+  weights: null  # Auto-compute if null

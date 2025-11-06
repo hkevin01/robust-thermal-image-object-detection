@@ -1,0 +1,85 @@
+# Quick Start Configuration
+# For testing the training pipeline with synthetic dataset
+
+experiment_name: "thermal_yolo_quick_start"
+
+# Model configuration
+model:
+  name: "yolov8n"  # Nano model for fast testing
+  pretrained: true
+  num_classes: 4
+
+# Data configuration
+data:
+  data_yaml: "data/synthetic/data.yaml"
+  train_split: "train"
+  val_split: "val"
+  test_split: "test"
+
+# Training configuration (reduced for quick testing)
+training:
+  epochs: 10  # Just 10 epochs for quick validation
+  batch_size: 4  # Small batch for CPU/small GPU
+  image_size: 640
+  device: "0"  # GPU 0 or "cpu"
+  workers: 2
+  patience: 5
+  save_period: 5
+  cache: false  # Don't cache for small dataset
+
+# Optimizer settings
+optimizer:
+  name: "AdamW"
+  lr0: 0.001
+  lrf: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 1  # Reduced warmup
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+# Loss weights
+loss:
+  box: 7.5
+  cls: 0.5
+  dfl: 1.5
+
+# Augmentation settings (reduced for small dataset)
+augmentation:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 10.0
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 0.5  # Reduced mosaic
+  mixup: 0.0  # No mixup for small dataset
+  copy_paste: 0.0
+
+# Validation settings
+validation:
+  interval: 2  # Validate every 2 epochs
+  compute_temporal_metrics: false  # No temporal for synthetic
+  save_predictions: true
+
+# Logging
+logging:
+  wandb:
+    enabled: false  # Disabled by default for quick start
+    project: "thermal-detection-quick-start"
+    entity: null
+    log_model: false
+    log_interval: 5
+  tensorboard:
+    enabled: false
+
+# Checkpointing
+checkpoint:
+  save_best: true
+  save_last: true
+  monitor: "map_50"
+  mode: "max"

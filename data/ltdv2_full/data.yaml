@@ -1,0 +1,13 @@
+# LTDv2 Dataset - YOLO Format
+path: /home/kevin/Projects/robust-thermal-image-object-detection/data/ltdv2_full
+train: images/train
+val: images/val
+test: images/test
+
+nc: 5
+names:
+  0: background
+  1: person
+  2: bicycle
+  3: motorcycle
+  4: vehicle

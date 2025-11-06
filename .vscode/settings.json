@@ -1,0 +1,48 @@
+{
+  "github.copilot.advanced": {
+    "debug.overrideEngine": "gpt-4",
+    "debug.useNodeFetchAndFetchH2": true
+  },
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "text": "Always generate responses in small chunks (max 500 lines). Break large summaries into multiple parts with continuation prompts."
+    },
+    {
+      "text": "When generating status reports or summaries, use collapsible sections and reference files by path instead of showing full content."
+    },
+    {
+      "text": "Provide quick, scannable information first. Offer to expand details only when requested."
+    },
+    {
+      "text": "Use progress bars, tables, and bullet points instead of long paragraphs."
+    }
+  ],
+  "github.copilot.chat.welcomeMessage": "always",
+  "github.copilot.editor.enableAutoCompletions": true,
+  
+  "editor.maxTokenizationLineLength": 2000,
+  "editor.largeFileOptimizations": true,
+  
+  "files.watcherExclude": {
+    "**/data/**": true,
+    "**/runs/**": true,
+    "**/.cache/**": true,
+    "**/venv/**": true,
+    "**/__pycache__/**": true,
+    "**/*.log": true
+  },
+  
+  "search.exclude": {
+    "**/data/**": true,
+    "**/runs/**": true,
+    "**/.cache/**": true,
+    "**/venv/**": true,
+    "**/__pycache__/**": true
+  },
+  
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    ".pytest_cache": true
+  }
+}

@@ -1,0 +1,36 @@
+# YOLO Data Configuration for LTDv2 Dataset
+# This file defines the dataset paths and class information for training
+
+# Dataset root path (absolute or relative to this file)
+path: ../data/ltdv2  # Root directory
+
+# Train/val/test splits (relative to path)
+train: images/train  # Training images
+val: images/val      # Validation images
+test: images/test    # Test images (optional)
+
+# Number of classes
+nc: 4
+
+# Class names (must match annotation format)
+names:
+  0: Person
+  1: Bicycle
+  2: Motorcycle
+  3: Vehicle
+
+# Optional: Download script
+# download: python scripts/data/download_dataset.py
+
+# Optional: Preprocessing settings
+# preprocessing:
+#   normalize: true
+#   augment: true
+
+# Optional: Class weights for imbalanced data
+# class_weights: [1.0, 1.2, 1.1, 1.0]
+
+# Optional: Temporal metadata (if available)
+# metadata:
+#   temperature: data/ltdv2/metadata/temperature.csv
+#   weather: data/ltdv2/metadata/weather.csv

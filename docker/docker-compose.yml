@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  thermal-detector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: thermal-detector:latest
+    container_name: thermal-detector
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ../:/workspace
+      - ../data:/workspace/data
+      - ../assets/models:/workspace/assets/models
+      - ../logs:/workspace/logs
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    shm_size: '16gb'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

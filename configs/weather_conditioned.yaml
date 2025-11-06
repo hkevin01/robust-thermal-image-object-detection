@@ -1,0 +1,122 @@
+# Weather-Conditioned Training Configuration
+# Incorporates metadata (temperature, humidity, solar radiation) into training
+
+experiment_name: "thermal_yolo_weather_conditioned"
+
+# Model configuration
+model:
+  name: "yolov8m"  # Medium model for better capacity
+  pretrained: true
+  num_classes: 4
+
+# Data configuration
+data:
+  data_yaml: "configs/data.yaml"
+  train_split: "train"
+  val_split: "val"
+  test_split: "test"
+  use_metadata: true  # Enable metadata fusion
+  metadata_file: "data/ltdv2/metadata.csv"
+  metadata_features:
+    - temperature
+    - humidity
+    - solar_radiation
+    - time_of_day  # Extracted from timestamp
+
+# Training configuration
+training:
+  epochs: 150
+  batch_size: 16
+  image_size: 640
+  device: "0"  # GPU 0 or "cpu"
+  workers: 8
+  patience: 30  # Early stopping patience
+  save_period: 10  # Save checkpoint every N epochs
+
+# Optimizer settings
+optimizer:
+  name: "AdamW"
+  lr0: 0.001
+  lrf: 0.01  # Final learning rate factor
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+
+# Loss weights
+loss:
+  box: 7.5
+  cls: 0.5
+  dfl: 1.5
+
+# Augmentation settings (weather-aware)
+augmentation:
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 10.0  # Rotation
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.5
+  mosaic: 1.0
+  mixup: 0.15  # Increased for weather robustness
+  copy_paste: 0.1
+
+# Weather-specific augmentations
+weather_augmentation:
+  # Simulate different thermal conditions
+  thermal_shift:
+    enabled: true
+    range: [-20, 20]  # Temperature offset in arbitrary units
+  
+  # Simulate different weather conditions
+  blur:
+    enabled: true
+    probability: 0.3
+    kernel_range: [3, 7]
+  
+  # Simulate fog/haze
+  brightness_adjust:
+    enabled: true
+    range: [0.7, 1.3]
+  
+  # Simulate rain/snow noise
+  noise:
+    enabled: true
+    probability: 0.2
+    std_range: [0.01, 0.05]
+
+# Metadata fusion configuration
+metadata_fusion:
+  method: "concat"  # Options: concat, add, gate
+  hidden_dim: 128
+  dropout: 0.1
+  normalize: true
+
+# Validation settings
+validation:
+  interval: 1  # Validate every N epochs
+  compute_temporal_metrics: true
+  save_predictions: false
+
+# Logging
+logging:
+  wandb:
+    enabled: true
+    project: "thermal-detection-weather"
+    entity: null  # Your W&B entity/team
+    log_model: true
+    log_interval: 10
+  tensorboard:
+    enabled: false
+  
+# Checkpointing
+checkpoint:
+  save_best: true
+  save_last: true
+  monitor: "challenge_score"  # mAP * (1 - CoV)
+  mode: "max"

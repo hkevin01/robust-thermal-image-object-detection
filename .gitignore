@@ -1,0 +1,178 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+pythonenv*/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Data - Exclude all data directories
+data/*
+!data/.gitkeep
+!data/README.md
+
+# Keep only data structure documentation
+data/raw/.gitkeep
+data/processed/.gitkeep
+data/annotations/.gitkeep
+data/metadata/.gitkeep
+
+# Specifically exclude large dataset directories
+data/ltdv2_full/
+data/ltdv2_subset/
+data/ltdv2_10k/
+data/ltdv2_test/
+data/synthetic/
+data/*.log
+
+# Model weights and checkpoints
+assets/models/*
+!assets/models/.gitkeep
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.pb
+*.onnx
+*.tflite
+checkpoints/
+runs/
+wandb/
+mlruns/
+
+# Training outputs
+experiments/
+outputs/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Compiled C/C++
+*.o
+*.a
+*.obj
+*.exe
+*.out
+*.app
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# Docker
+.dockerignore
+
+# Temporary files
+tmp/
+temp/
+*.cache
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Cache directories
+.cache/
+*.cache/
+__pycache__/
+
+# Submission files
+submissions/
+results/
+
+# Experiment tracking
+tensorboard/
+.neptune/
+
+# IDE
+*.sublime-project
+*.sublime-workspace
