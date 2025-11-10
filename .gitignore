@@ -25,6 +25,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+venv-*/
 .venv/
 env/
 ENV/
@@ -67,6 +68,11 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Datasets - Exclude all dataset directories
+datasets/
+coco/
+yolo/
+
 # Data - Exclude all data directories
 data/*
 !data/.gitkeep
@@ -85,6 +91,26 @@ data/ltdv2_10k/
 data/ltdv2_test/
 data/synthetic/
 data/*.log
+
+# Image and video files (dataset content)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tif
+*.tiff
+*.gif
+*.webp
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Label files (YOLO format)
+*.txt
+!requirements.txt
+!README.txt
+!LICENSE.txt
 
 # Model weights and checkpoints
 assets/models/*
@@ -108,6 +134,16 @@ outputs/
 # Logs
 logs/
 *.log
+*.csv
+
+# Process ID files
+*.pid
+.*_pid
+.training_state
+.monitor_state
+.training_pid
+.monitor_pid
+.gpu_watchdog_pid
 
 # Environment variables
 .env
