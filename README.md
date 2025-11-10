@@ -88,9 +88,19 @@ mindmap
 
 ### WACV 2026 Real World Surveillance (RWS) Workshop
 
+**Competition**: [WACV 2026 RWS Challenge on CodaLab](https://competitions.codalab.org/competitions/36713)
+
 **Competition Goal**: Build object detectors that work reliably over extended periods in real-world thermal surveillance scenarios.
 
-**Dataset**: LTDv2 (Large-Scale Long-Term Thermal Drift Dataset v2)
+**Official Dataset**: LTDv2 (Large-Scale Long-Term Thermal Drift Dataset v2)
+- **Paper**: [arXiv:2108.08633](https://arxiv.org/abs/2108.08633)
+- **Download**: Requires competition registration on CodaLab
+- **Format**: YOLO-style annotations (class x_center y_center width height, normalized)
+
+**Evaluation Server**: Test set predictions submitted to CodaLab for blind evaluation
+- **Submission Format**: COCO JSON detection results
+- **Frequency**: 2 submissions per day maximum
+- **Leaderboard**: Public leaderboard (50% test) + private leaderboard (50% test, revealed after competition)
 
 ### Dataset Statistics
 
@@ -213,11 +223,230 @@ graph TB
 - 🔧 **Transfer Learning**: Pre-trained on COCO, fine-tuned on thermal data
 - 📊 **Robustness**: Anchor-free design adapts better to varying object scales
 
-**Architecture Highlights**:
-- **Backbone**: CSPDarknet for efficient feature extraction
-- **Neck**: PANet for multi-scale feature fusion (80×80, 40×40, 20×20)
-- **Head**: Decoupled classification and box regression heads
-- **Training**: Task-Aligned Learning (TAL) for optimal anchor assignment
+**Architecture Components** (Detailed):
+
+##### Backbone: CSPDarknet with Cross-Stage Partial Connections
+
+**What it does**: Extracts hierarchical features from input images
+
+**How CSP works**:
+- Splits feature map into two branches
+- One branch goes through dense blocks (Conv + residual connections)
+- Other branch bypasses directly
+- Branches merge at the end via concatenation
+- **Benefit**: Reduces computational redundancy while maintaining gradient flow
+
+**Why for thermal robustness**:
+- Multi-scale features capture both small (pedestrians) and large objects (buses)
+- Efficient computation allows faster training iterations
+- Strong gradient flow helps learn subtle thermal signature variations
+
+##### Neck: PANet (Path Aggregation Network)
+
+**What it does**: Fuses features from multiple scales for better detection
+
+**Architecture**:
+```
+Backbone features (C3, C4, C5) → Top-down pathway (FPN)
+                                       ↓
+                          Bottom-up pathway (aggregation)
+                                       ↓
+                          Detection heads (3 scales)
+```
+
+**Why for thermal robustness**:
+- **Top-down path**: Adds strong semantic information to lower-level features
+- **Bottom-up path**: Adds precise localization information to higher-level features
+- **Multi-scale fusion**: Objects at different distances/sizes detected consistently
+- **Thermal benefit**: Handles varying thermal contrast at different scales
+
+**Three Detection Scales**:
+- **80×80 grid**: Detects small objects (distant pedestrians, motorcycles)
+- **40×40 grid**: Detects medium objects (cars, close pedestrians)
+- **20×20 grid**: Detects large objects (buses, trucks, close vehicles)
+
+##### Head: Decoupled Classification & Localization
+
+**What it does**: Separates objectness/class prediction from bounding box regression
+
+**Traditional approach** (coupled):
+```
+Features → Single head → [class scores + bbox coordinates]
+```
+
+**YOLOv8 approach** (decoupled):
+```
+Features → Classification head → [class scores]
+        → Localization head   → [bbox coordinates]
+```
+
+**Why decoupled is better**:
+- **Conflict reduction**: Classification needs high-level semantic features
+- **Localization needs**: Low-level spatial features
+- **Separate learning**: Each task can optimize independently
+- **Thermal benefit**: Classification learns "what" (person/car) while localization learns "where" despite thermal drift
+
+##### Training: Task-Aligned Learning (TAL)
+
+**What it does**: Anchor-free assignment that aligns classification and localization quality
+
+**Traditional anchor-based**:
+- Pre-defined anchor boxes (e.g., 9 anchors per scale)
+- IoU-based assignment (>=0.5 IoU = positive)
+- Problem: Misalignment between classification confidence and localization quality
+
+**TAL (anchor-free)**:
+```
+For each ground truth box:
+  1. Compute alignment metric for all predictions:
+     alignment = class_score^α × IoU^β
+  2. Select top-k predictions with highest alignment
+  3. Assign as positives, rest as negatives
+```
+
+**Why for thermal robustness**:
+- **Dynamic assignment**: Adapts to varying thermal signatures (no fixed anchors)
+- **Quality-aware**: High classification score + accurate bbox both required
+- **Flexible scales**: No need to pre-define object sizes (important for thermal where apparent size varies with temperature contrast)
+- **Better gradients**: Focuses training on predictions that are both confident AND accurate
+
+---
+
+### Competition Solution Architecture
+
+Our complete pipeline for the WACV 2026 RWS Challenge:
+
+```mermaid
+graph TB
+    subgraph "📥 INPUT STAGE"
+        I1[LTDv2 Dataset<br/>329K thermal images<br/>8 months, 5 classes]
+        I2[Temporal Metadata<br/>Date, time, weather<br/>Temperature data]
+        I3[Annotations<br/>YOLO format<br/>6.8M+ bounding boxes]
+    end
+    
+    subgraph "🔄 DATA PREPROCESSING"
+        P1[Image Loading<br/>640×512 → 640×640<br/>8-worker parallel]
+        P2[Temporal Stratification<br/>Balance seasons/weather<br/>Ensure representation]
+        P3[Augmentation Pipeline<br/>Mosaic, Flip, Scale<br/>HSV, MixUp, Copy-Paste]
+    end
+    
+    subgraph "🧠 MODEL ARCHITECTURE"
+        direction TB
+        M1[Input: 640×640×3]
+        M2[CSPDarknet Backbone<br/>Extract C3, C4, C5 features<br/>Cross-stage connections]
+        M3[PANet Neck<br/>Top-down + Bottom-up<br/>Multi-scale fusion]
+        M4[Decoupled Heads × 3<br/>80×80, 40×40, 20×20 grids]
+        M5[Classification Branch<br/>5 classes + objectness]
+        M6[Localization Branch<br/>Bbox coordinates]
+        
+        M1 --> M2
+        M2 --> M3
+        M3 --> M4
+        M4 --> M5
+        M4 --> M6
+    end
+    
+    subgraph "📊 TRAINING LOOP"
+        T1[Forward Pass<br/>Batch size: 4<br/>Mixed precision: OFF]
+        T2[Loss Calculation<br/>L_box + L_cls + L_dfl<br/>Task-Aligned Learning]
+        T3[Backward Pass<br/>Gradient computation<br/>via Autograd]
+        T4[Optimizer Step<br/>SGD, momentum=0.937<br/>Cosine LR schedule]
+    end
+    
+    subgraph "✅ VALIDATION & METRICS"
+        V1[Validation Set<br/>41,226 images<br/>Stratified by conditions]
+        V2[Compute mAP@0.5<br/>Per-class AP<br/>Overall detection quality]
+        V3[Compute CoV<br/>Variance across temporal bins<br/>Consistency measure]
+        V4[Robustness Score<br/>mAP × 1 - CoV<br/>Final competition metric]
+    end
+    
+    subgraph "🎯 OUTPUT & SUBMISSION"
+        O1[Best Model Checkpoint<br/>Highest Robustness Score<br/>best.pt]
+        O2[Test Set Inference<br/>46,884 held-out images<br/>June-Oct 2021]
+        O3[Generate Predictions<br/>COCO JSON format<br/>Class, bbox, confidence]
+        O4[CodaLab Submission<br/>Upload to competition<br/>Leaderboard evaluation]
+    end
+    
+    I1 --> P1
+    I2 --> P2
+    I3 --> P1
+    P1 --> P2
+    P2 --> P3
+    P3 --> M1
+    
+    M5 --> T1
+    M6 --> T1
+    T1 --> T2
+    T2 --> T3
+    T3 --> T4
+    T4 -->|Next epoch| P3
+    
+    T4 -->|Every epoch| V1
+    V1 --> V2
+    V2 --> V3
+    V3 --> V4
+    V4 -->|If best score| O1
+    
+    O1 --> O2
+    O2 --> O3
+    O3 --> O4
+    
+    style I1 fill:#364fc7,stroke:#fff,stroke-width:2px,color:#fff
+    style I2 fill:#364fc7,stroke:#fff,stroke-width:2px,color:#fff
+    style I3 fill:#364fc7,stroke:#fff,stroke-width:2px,color:#fff
+    style P1 fill:#5f3dc4,stroke:#fff,stroke-width:2px,color:#fff
+    style P2 fill:#5f3dc4,stroke:#fff,stroke-width:2px,color:#fff
+    style P3 fill:#5f3dc4,stroke:#fff,stroke-width:2px,color:#fff
+    style M1 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style M2 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style M3 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style M4 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style M5 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style M6 fill:#c92a2a,stroke:#fff,stroke-width:2px,color:#fff
+    style T1 fill:#d9480f,stroke:#fff,stroke-width:2px,color:#fff
+    style T2 fill:#d9480f,stroke:#fff,stroke-width:2px,color:#fff
+    style T3 fill:#d9480f,stroke:#fff,stroke-width:2px,color:#fff
+    style T4 fill:#d9480f,stroke:#fff,stroke-width:2px,color:#fff
+    style V1 fill:#0ca678,stroke:#fff,stroke-width:2px,color:#fff
+    style V2 fill:#0ca678,stroke:#fff,stroke-width:2px,color:#fff
+    style V3 fill:#0ca678,stroke:#fff,stroke-width:2px,color:#fff
+    style V4 fill:#0ca678,stroke:#fff,stroke-width:2px,color:#fff
+    style O1 fill:#862e9c,stroke:#fff,stroke-width:2px,color:#fff
+    style O2 fill:#862e9c,stroke:#fff,stroke-width:2px,color:#fff
+    style O3 fill:#862e9c,stroke:#fff,stroke-width:2px,color:#fff
+    style O4 fill:#862e9c,stroke:#fff,stroke-width:2px,color:#fff
+```
+
+**Key Decision Points in Our Approach**:
+
+1. **Model Size**: YOLOv8n (3.2M params) chosen over larger variants
+   - ✅ Faster training iterations (critical for hyperparameter tuning)
+   - ✅ Less prone to overfitting on specific conditions
+   - ✅ Sufficient capacity for 5 classes
+   - ❌ Tradeoff: Slightly lower peak accuracy than YOLOv8m/l
+
+2. **Batch Size**: 4 images per batch
+   - ✅ Stable gradients, better generalization
+   - ✅ Fits in 6GB VRAM with augmentation overhead
+   - ❌ Tradeoff: Slower training (~5 batches/sec vs 20 with larger GPU)
+
+3. **Image Size**: 640×640 pixels
+   - ✅ Standard YOLO training size
+   - ✅ Balances speed and small object detection
+   - ✅ Matches test set inference size
+
+4. **Augmentation Strategy**: Aggressive augmentation until epoch 40
+   - ✅ Mosaic: Exposes model to multiple conditions simultaneously
+   - ✅ HSV jitter: Simulates thermal signature variations
+   - ✅ Copy-paste: Increases object diversity
+   - ⚠️ Disabled in last 10 epochs for fine-tuning
+
+5. **Anchor-Free (TAL)**: Task-Aligned Learning assignment
+   - ✅ No need to pre-define anchor sizes for each thermal condition
+   - ✅ Dynamic assignment based on prediction quality
+   - ✅ Better handles varying object appearances across seasons
+
+---
 
 #### 2. PyTorch Framework
 
