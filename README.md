@@ -2,7 +2,6 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10-blue.svg)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-1.13.1-red.svg)](https://pytorch.org/)
 [![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 [![Status](https://img.shields.io/badge/Status-Training-success.svg)](.)
 
@@ -165,7 +164,7 @@ graph TB
     end
     
     subgraph "📚 Deep Learning Framework"
-        D1[PyTorch 1.13.1<br/>Dynamic Computation]
+        D1[PyTorch<br/>Dynamic Computation]
         D2[TorchVision<br/>Image Transforms]
         D3[Ultralytics<br/>YOLOv8 Implementation]
     end
@@ -682,10 +681,6 @@ robust-thermal-image-object-detection/
 │   │   ├── extract_metrics.sh       # Metrics extraction
 │   │   └── monitor_training.sh      # Continuous monitoring
 │   │
-│   ├── 📂 system/                   # System management
-│   │   ├── amdgpu-fan-curve.sh      # GPU fan control
-│   │   └── setup_environment.sh     # Environment setup
-│   │
 │   └── 📂 data/                     # Data management
 │       ├── download_ltdv2.sh        # Dataset downloader
 │       └── convert_dataset.py       # Format converter
@@ -701,10 +696,10 @@ robust-thermal-image-object-detection/
 │   └── test_training.py             # Training tests
 │
 ├── 📂 docs/                         # Documentation
-│   ├── AMD_GPU_AUTO_FAN_SETUP.md    # Fan control guide
-│   ├── GPU_FAN_OPTIMIZATION.md      # Fan optimization
-│   ├── MIOPEN_BYPASS_SUCCESS.md     # MIOpen solution
-│   ├── NEXT_STEPS_COMPLETED.md      # Progress tracking
+│   ├── COMPETITION_SUBMISSION_GUIDE.md  # Submission reference
+│   ├── SUBMISSION_WORKFLOW.md       # Quick workflow guide
+│   ├── SUBMISSION_CHECKLIST.md      # Phase-by-phase checklist
+│   ├── MEMORY_BANK.md               # Competition knowledge base
 │   └── QUICK_REFERENCE.md           # Quick commands
 │
 ├── 📂 data/                         # Data directory (gitignored)
@@ -741,53 +736,18 @@ robust-thermal-image-object-detection/
 ### Prerequisites
 
 - **OS**: Ubuntu 22.04 LTS (or compatible Linux)
-- **GPU**: AMD GPU with ROCm support (tested on RDNA1/RX 5600 XT)
+- **GPU**: CUDA-compatible GPU recommended for training
 - **RAM**: 16GB+ recommended
 - **Storage**: 150GB+ for dataset
 
-### Step 1: Install ROCm 5.2.0
-
-```bash
-# Add ROCm repository
-wget -q -O - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
-echo 'deb [arch=amd64] https://repo.radeon.com/rocm/apt/5.2 ubuntu main' | \
-    sudo tee /etc/apt/sources.list.d/rocm.list
-
-# Install ROCm
-sudo apt update
-sudo apt install rocm-dkms rocm-dev rocm-libs
-
-# Add user to video/render groups
-sudo usermod -a -G render,video $LOGNAME
-```
-
-### Step 2: Clone Repository
+### Step 1: Clone Repository
 
 ```bash
 git clone https://github.com/hkevin01/robust-thermal-image-object-detection.git
 cd robust-thermal-image-object-detection
 ```
 
-### Step 3: Create Virtual Environment
-
-```bash
-# Create venv
-python3.10 -m venv venv-py310-rocm52
-source venv-py310-rocm52/bin/activate
-
-# Upgrade pip
-pip install --upgrade pip setuptools wheel
-```
-
-### Step 4: Install PyTorch + ROCm
-
-```bash
-# Install PyTorch 1.13.1 with ROCm 5.2 support
-pip install torch==1.13.1+rocm5.2 torchvision==0.14.1+rocm5.2 \
-    --extra-index-url https://download.pytorch.org/whl/rocm5.2
-```
-
-### Step 5: Install Dependencies
+### Step 2: Install Dependencies
 
 ```bash
 # Install project dependencies
@@ -797,21 +757,7 @@ pip install -r requirements.txt
 pip install ultralytics
 ```
 
-### Step 6: Setup GPU Fan Control (Optional but Recommended)
-
-```bash
-# Copy fan control script
-sudo cp scripts/system/amdgpu-fan-curve.sh /usr/local/bin/
-sudo chmod +x /usr/local/bin/amdgpu-fan-curve.sh
-
-# Setup systemd service
-sudo cp configs/amdgpu-fan-curve.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable amdgpu-fan-curve.service
-sudo systemctl start amdgpu-fan-curve.service
-```
-
-### Step 7: Download Dataset
+### Step 3: Download Dataset
 
 ```bash
 # Download LTDv2 dataset (requires registration)
@@ -831,12 +777,8 @@ sudo systemctl start amdgpu-fan-curve.service
 ### Verification
 
 ```bash
-# Verify ROCm installation
-rocminfo | grep "Name:"
-
 # Verify PyTorch GPU support
-python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
-python -c "import torch; print(f'GPU: {torch.cuda.get_device_name(0)}')"
+python -c "import torch; print(f'GPU available: {torch.cuda.is_available()}')"
 
 # Verify dataset
 ls data/ltdv2_full/images/train/ | wc -l  # Should show 329299
@@ -848,13 +790,10 @@ ls data/ltdv2_full/images/train/ | wc -l  # Should show 329299
 
 ### Training
 
-#### Quick Start (with MIOpen Bypass)
+#### Quick Start
 
 ```bash
-# Activate environment
-source venv-py310-rocm52/bin/activate
-
-# Start training with patched Conv2d
+# Start training
 python train_patched.py
 ```
 
@@ -1098,10 +1037,10 @@ Current test coverage: **87%**
 
 ### Available Docs
 
-- **[AMD GPU Fan Setup](docs/AMD_GPU_AUTO_FAN_SETUP.md)** - Configure automatic fan control
-- **[GPU Fan Optimization](docs/GPU_FAN_OPTIMIZATION.md)** - Technical deep-dive on thermal management
-- **[MIOpen Bypass Success](docs/MIOPEN_BYPASS_SUCCESS.md)** - How we solved the RDNA1 problem
-- **[Next Steps Completed](docs/NEXT_STEPS_COMPLETED.md)** - Project progress tracking
+- **[Competition Submission Guide](docs/COMPETITION_SUBMISSION_GUIDE.md)** - Complete submission reference
+- **[Submission Workflow](docs/SUBMISSION_WORKFLOW.md)** - Quick start guide
+- **[Submission Checklist](docs/SUBMISSION_CHECKLIST.md)** - Phase-by-phase checklist
+- **[Memory Bank](docs/MEMORY_BANK.md)** - Competition knowledge base
 - **[Quick Reference](docs/QUICK_REFERENCE.md)** - Common commands cheat sheet
 
 > **Note**: All documentation files have been organized into the `docs/` directory.
@@ -1188,6 +1127,4 @@ If you use this code or approach in your research, please cite:
 ```
 
 ---
-
-**Built with ❤️ and determination to make AMD GPUs work for deep learning!**
 

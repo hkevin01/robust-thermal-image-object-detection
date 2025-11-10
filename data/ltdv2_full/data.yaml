@@ -1,13 +1,15 @@
 # LTDv2 Dataset - YOLO Format
+# Competition: https://www.codabench.org/competitions/10954/
+# Classes: Person, Bicycle, Motorcycle, Vehicle (4 classes)
+
 path: /home/kevin/Projects/robust-thermal-image-object-detection/data/ltdv2_full
 train: images/train
 val: images/val
 test: images/test
 
-nc: 5
+nc: 4
 names:
-  0: background
-  1: person
-  2: bicycle
-  3: motorcycle
-  4: vehicle
+  0: person
+  1: bicycle
+  2: motorcycle
+  3: vehicle
