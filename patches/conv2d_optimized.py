@@ -426,12 +426,32 @@ if __name__ == "__main__":
     test_optimized_conv2d()
 
 
+class PicklableConvForward:
+    """Picklable wrapper for optimized conv forward"""
+    def __init__(self, stride, padding, dilation, groups):
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+    
+    def __call__(self, input, weight, bias):
+        return im2col_conv2d_optimized(
+            input=input,
+            weight=weight,
+            bias=bias,
+            stride=self.stride,
+            padding=self.padding,
+            dilation=self.dilation,
+            groups=self.groups
+        )
+
+
 def monkey_patch_conv2d_forward(model):
     """
     Monkey-patch the forward method of all Conv2d layers in a model
     
     This replaces the _conv_forward method at runtime to use our optimized implementation.
-    Works with already-loaded models and checkpoints.
+    Uses a picklable wrapper class for checkpoint compatibility.
     
     Args:
         model: PyTorch model or nn.Module
@@ -441,34 +461,23 @@ def monkey_patch_conv2d_forward(model):
     """
     patched_count = 0
     
-    def create_optimized_forward(original_conv):
-        """Create an optimized forward function for a specific Conv2d instance"""
-        def optimized_conv_forward(input, weight, bias):
-            """Use our optimized im2col + matmul implementation"""
-            return im2col_conv2d_optimized(
-                input=input,
-                weight=weight,
-                bias=bias,
-                stride=original_conv.stride,
-                padding=original_conv.padding,
-                dilation=original_conv.dilation,
-                groups=original_conv.groups
-            )
-        return optimized_conv_forward
-    
     def _recursive_patch(module):
         nonlocal patched_count
         
         # Patch direct Conv2d instances
         if isinstance(module, nn.Conv2d) and not isinstance(module, OptimizedFallbackConv2d):
-            # Replace the _conv_forward method
-            module._conv_forward = create_optimized_forward(module)
+            # Replace with picklable wrapper
+            module._conv_forward = PicklableConvForward(
+                module.stride, module.padding, module.dilation, module.groups
+            )
             patched_count += 1
         
         # Check for wrapped Conv2d (e.g., ultralytics Conv.conv)
         if hasattr(module, 'conv') and isinstance(module.conv, nn.Conv2d):
             if not isinstance(module.conv, OptimizedFallbackConv2d):
-                module.conv._conv_forward = create_optimized_forward(module.conv)
+                module.conv._conv_forward = PicklableConvForward(
+                    module.conv.stride, module.conv.padding, module.conv.dilation, module.conv.groups
+                )
                 patched_count += 1
         
         # Recursively patch children
