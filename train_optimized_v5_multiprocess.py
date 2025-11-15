@@ -1,31 +1,64 @@
 #!/usr/bin/env python3
 """
-Optimized YOLOv8 Training - AMD RX 5600 XT (gfx1010) - Version 4 FIXED
-==================================================================
+Optimized YOLOv8 Training - AMD RX 5600 XT (gfx1010) - Version 5 MULTIPROCESS
+===============================================================================
 
-KEY FIX: Re-apply monkey-patch after model rebuild for correct class count
+KEY FEATURES:
+1. Re-apply monkey-patch after model rebuild for correct class count
+2. PicklableConvForward for checkpoint saving
+3. DataLoader multiprocessing with spawn context and persistent workers
 """
 
 import os
 import sys
 from pathlib import Path
+import multiprocessing as mp
+
+# Set multiprocessing start method to 'spawn' BEFORE importing torch
+mp.set_start_method('spawn', force=True)
 
 # Add patches directory FIRST
 sys.path.insert(0, str(Path(__file__).parent / 'patches'))
 
 print("="*80)
-print("AMD RX 5600 XT - Training Version 4 FIXED: CLASS COUNT + RE-PATCH")
+print("AMD RX 5600 XT - Training Version 5: MULTIPROCESS DATALOADER")
+print("="*80)
+print(f"Multiprocessing context: {mp.get_start_method()}")
 print("="*80)
 
 # Import Conv2d patch
 from conv2d_optimized import monkey_patch_conv2d_forward
 from ultralytics import YOLO
 from ultralytics.engine.trainer import BaseTrainer
+from ultralytics.utils import LOGGER
+import torch.utils.data
 
 # Set environment variables
 os.environ['MIOPEN_FIND_MODE'] = '1'
 os.environ['MIOPEN_DEBUG_DISABLE_FIND_DB'] = '1'
 os.environ['MIOPEN_DISABLE_CACHE'] = '0'
+
+# Monkey-patch DataLoader to use spawn context and persistent workers
+original_dataloader_init = torch.utils.data.DataLoader.__init__
+
+def patched_dataloader_init(self, *args, **kwargs):
+    """Enhanced DataLoader with spawn context and persistent workers"""
+    # Only modify if num_workers > 0
+    if kwargs.get('num_workers', 0) > 0:
+        # Force spawn multiprocessing context
+        if 'multiprocessing_context' not in kwargs:
+            kwargs['multiprocessing_context'] = 'spawn'
+            print(f"  ✓ DataLoader: Using 'spawn' multiprocessing context")
+        
+        # Enable persistent workers
+        if 'persistent_workers' not in kwargs:
+            kwargs['persistent_workers'] = True
+            print(f"  ✓ DataLoader: Enabling persistent_workers=True")
+    
+    # Call original init
+    return original_dataloader_init(self, *args, **kwargs)
+
+torch.utils.data.DataLoader.__init__ = patched_dataloader_init
 
 # Monkey-patch the trainer to re-apply Conv2d patch after model rebuild
 original_setup_model = BaseTrainer.setup_model
@@ -58,7 +91,8 @@ def main():
     print("  Epochs: 50")
     print("  Learning rate: 0.001")
     print("  AMP: Disabled")
-    print("  Workers: 0  (single-threaded to avoid DataLoader deadlock)")
+    print("  Workers: 4  (spawn context + persistent_workers)")
+    print("  Multiprocessing: spawn (avoids fork memory issues)")
     
     # Train - our patched trainer will re-apply monkey-patch after model rebuild
     results = model.train(
@@ -67,10 +101,10 @@ def main():
         batch=8,
         imgsz=640,
         device='cuda:0',
-        workers=0,  # Single-threaded to avoid DataLoader deadlock with ROCm
+        workers=4,  # Try 4 workers with spawn context
         amp=False,
         project='runs/detect',
-        name='train_optimized_v4_fixed',
+        name='train_optimized_v5_multiprocess',
         lr0=0.001,
         lrf=0.01,
         momentum=0.937,
