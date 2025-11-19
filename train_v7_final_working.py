@@ -7,6 +7,8 @@ Workers=0, AMP disabled, patches applied
 import os
 import sys
 from datetime import datetime
+import torch
+import torch.nn
 
 # Add project root to path so checkpoint can find patches.conv2d_optimized module
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -89,15 +91,79 @@ try:
 except Exception as e:
     print(f"⚠️  Could not patch build_dataloader: {e}")
 
+# Patch training step to add gradient clipping for NaN prevention
+from ultralytics.engine.trainer import BaseTrainer
+original_optimizer_step = BaseTrainer.optimizer_step
+
+def patched_optimizer_step(self):
+    """Add gradient clipping before optimizer step"""
+    # Clip gradients to prevent explosion
+    if hasattr(self, 'scaler'):
+        self.scaler.unscale_(self.optimizer)
+    
+    # Gradient clipping - STRENGTHENED for Epoch 4+ stability
+    max_norm = 5.0  # More aggressive clipping (reduced from 10.0)
+    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm)
+    
+    # Check for NaN/Inf in gradients before stepping
+    params_with_grad = [p for p in self.model.parameters() if p.grad is not None]
+    if params_with_grad:
+        grad_norm = torch.norm(torch.stack([torch.norm(p.grad.detach()) for p in params_with_grad]))
+        if not torch.isfinite(grad_norm):
+            print(f"⚠️  WARNING: Non-finite gradient detected (norm={grad_norm}), skipping optimizer step")
+            self.optimizer.zero_grad()
+            return
+    
+    # Proceed with original optimizer step
+    original_optimizer_step(self)
+
+BaseTrainer.optimizer_step = patched_optimizer_step
+print("✓ Gradient clipping patched into training loop")
+
 print("="*70)
-print("🚀 Starting Training - FINAL VERSION")
+print("🚀 Starting Training - NaN PREVENTION STRENGTHENED v2 + VERBOSE")
 print("="*70)
 print("  • Workers: 0 (FORCED IN MULTIPLE PLACES)")
 print("  • AMP: Disabled (ROCm compatibility)")
 print("  • Resume: From last.pt checkpoint")
+print("  • Gradient Clipping: STRENGTHENED (max_norm=5.0)")
+print("  • NaN Detection: ENABLED (auto-skip bad steps)")
+print("  • Learning Rate: ULTRA-REDUCED (0.00025 from 0.0005)")
+print("  • Warmup: EXTENDED (10 epochs from 5)")
+print("  • Momentum: REDUCED (0.85 from 0.9)")
+print("  • Weight Decay: INCREASED (0.001 from 0.0005)")
+print("  • Validation: ENABLED (every epoch)")
+print("  • VERBOSE LOGGING: ENABLED")
 print("="*70 + "\n")
 
-# Train
+print(f"[{datetime.now().strftime('%H:%M:%S')}] About to call model.train()...")
+sys.stdout.flush()
+
+# Add simple callback for progress monitoring
+def on_train_epoch_start(trainer):
+    """Print when epoch starts"""
+    try:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ▶️  Starting Epoch {trainer.epoch + 1}/{trainer.epochs}", flush=True)
+    except:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ▶️  Starting new epoch", flush=True)
+
+def on_train_epoch_end(trainer):
+    """Print when epoch ends"""
+    try:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Completed Epoch {trainer.epoch + 1}/{trainer.epochs}", flush=True)
+    except:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Epoch completed", flush=True)
+
+# Register callbacks
+model.add_callback("on_train_epoch_start", on_train_epoch_start)
+model.add_callback("on_train_epoch_end", on_train_epoch_end)
+print(f"[{datetime.now().strftime('%H:%M:%S')}] ✓ Progress callbacks registered")
+sys.stdout.flush()
+
+# Train with NaN prevention measures
+print(f"[{datetime.now().strftime('%H:%M:%S')}] Calling model.train() with parameters...")
+sys.stdout.flush()
+
 results = model.train(
     data='data/ltdv2_full/data.yaml',
     epochs=50,
@@ -108,21 +174,31 @@ results = model.train(
     project='runs/detect',
     name='train_v7_final_working',
     exist_ok=True,
-    resume=True,
-    val=False,
+    resume=False,  # START FRESH - don't load old hyperparameters from checkpoint
+    val=True,  # Enable validation to catch issues earlier
     amp=False,
     save=True,
     save_period=1,
-    lr0=0.001,
+    verbose=True,  # Force verbose output
+    
+    # ULTRA-REDUCED learning rate to prevent gradient explosion (STRENGTHENED)
+    lr0=0.00025,  # Further reduced from 0.0005 (50% reduction)
     lrf=0.01,
-    momentum=0.937,
-    weight_decay=0.0005,
-    warmup_epochs=3.0,
+    
+    # More conservative optimizer settings (STRENGTHENED)
+    momentum=0.85,  # Further reduced from 0.9
+    weight_decay=0.001,  # Increased from 0.0005 (stronger regularization)
+    optimizer='SGD',  # Explicit SGD (more stable than Adam with NaNs)
+    
+    # EXTENDED warmup for stability (STRENGTHENED)
+    warmup_epochs=10.0,  # Doubled from 5.0 epochs
     warmup_momentum=0.8,
-    warmup_bias_lr=0.1,
-    hsv_h=0.015,
-    hsv_s=0.7,
-    hsv_v=0.4,
+    warmup_bias_lr=0.025,  # Further reduced from 0.05
+    
+    # Conservative data augmentation (STRENGTHENED - reduce potential for extreme values)
+    hsv_h=0.005,  # Further reduced from 0.01
+    hsv_s=0.3,    # Further reduced from 0.5
+    hsv_v=0.2,    # Further reduced from 0.3
     degrees=0.0,
     translate=0.1,
     scale=0.5,
@@ -132,7 +208,7 @@ results = model.train(
     fliplr=0.5,
     mosaic=1.0,
     mixup=0.0,
-    verbose=True,
 )
 
-print("\n✅ Training completed!")
+print(f"\n[{datetime.now().strftime('%H:%M:%S')}] ✅ Training completed!")
+sys.stdout.flush()

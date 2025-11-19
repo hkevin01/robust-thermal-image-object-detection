@@ -1,0 +1,1 @@
+scripts/check_fresh_training.sh

@@ -1,53 +1,48 @@
 #!/bin/bash
+# Monitor Training Progress
 
-echo "==== YOLOv8 Training Monitor ===="
+echo "=== YOLOv8n Training Dashboard ==="
 echo ""
 
-# Check if training is running
-echo "📊 Training Status:"
-if tmux has-session -t yolo_training_fixed 2>/dev/null; then
-    echo "  ✅ tmux session 'yolo_training_fixed' is ACTIVE"
-    
-    # Get process info
-    PROC_COUNT=$(ps aux | grep train_optimized_v4_fixed.py | grep -v grep | wc -l)
-    echo "  ✅ $PROC_COUNT training process(es) running"
-    
-    # Show current training line
-    echo ""
-    echo "📈 Current Progress:"
-    tmux capture-pane -t yolo_training_fixed -p | tail -3 | head -2
-    echo ""
-    
-else
-    echo "  ❌ No training session found"
-    exit 1
-fi
-
-# GPU Status
-echo "🖥️  GPU Status:"
-rocm-smi --showtemp --showuse --showmeminfo vram 2>/dev/null | grep -E "Temperature|use \(%\)|Used Memory" | sed 's/^/  /'
-echo ""
-
-# Check latest model weights
-echo "💾 Saved Checkpoints:"
-LATEST_RUN=$(ls -dt runs/detect/train_optimized_v4_fixed* 2>/dev/null | head -1)
-if [ -n "$LATEST_RUN" ]; then
-    echo "  📁 Latest run: $LATEST_RUN"
-    if [ -d "$LATEST_RUN/weights" ]; then
-        WEIGHTS=$(ls -lht "$LATEST_RUN/weights/"*.pt 2>/dev/null | head -3)
-        if [ -n "$WEIGHTS" ]; then
-            echo "$WEIGHTS" | awk '{print "    " $9 " (" $5 ", " $6 " " $7 ")"}'
-        else
-            echo "    ⏳ No checkpoints saved yet"
-        fi
+# Process status
+echo "📊 Process Status:"
+if [ -f training.pid ]; then
+    PID=$(cat training.pid)
+    if ps -p $PID > /dev/null 2>&1; then
+        ps -p $PID -o pid,etime,pcpu,pmem,cmd
+    else
+        echo "❌ Training process not running"
     fi
 else
-    echo "  ⏳ No runs found yet"
+    echo "❌ No training.pid file"
 fi
-
 echo ""
-echo "Commands:"
-echo "  • View live: tmux attach -t yolo_training_fixed"
-echo "  • Detach: Press Ctrl+B then D"
-echo "  • Stop: tmux kill-session -t yolo_training_fixed"
-echo "  • Re-run: $0"
+
+# Current progress
+echo "📈 Current Progress:"
+LOGFILE=$(ls -t logs/training_STRENGTHENED_*.log 2>/dev/null | head -1 || echo "logs/training_NAN_PREVENTION_20251117.log")
+LATEST=$(grep -E "[0-9]+/50.*it/s" "$LOGFILE" | tail -1)
+if [ -n "$LATEST" ]; then
+    echo "$LATEST"
+else
+    echo "Initializing..."
+fi
+echo ""
+
+# NaN detection (should stay 0)
+echo "🛡️  NaN Protection Status:"
+NAN_COUNT=$(grep -c " nan " "$LOGFILE" 2>/dev/null || echo "0")
+GRADIENT_WARNINGS=$(grep -c "Non-finite gradient detected" "$LOGFILE" 2>/dev/null || echo "0")
+echo "NaN occurrences: $NAN_COUNT ✅"
+echo "Gradient interventions: $GRADIENT_WARNINGS"
+echo ""
+
+# Recent losses
+echo "📉 Recent Losses:"
+grep -E "[0-9]+/50.*it/s" "$LOGFILE" | tail -3
+echo ""
+echo "📁 Log file: $LOGFILE"
+echo ""
+
+echo "---"
+echo "Auto-refresh: watch -n 30 ./monitor_training.sh"

@@ -23,7 +23,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# Virtual environments (including symlinks)
+venv
 venv/
 venv-*/
 .venv/
@@ -212,3 +213,23 @@ tensorboard/
 # IDE
 *.sublime-project
 *.sublime-workspace
+
+# Root directory organization rules
+# Prevent markdown files in root (except README.md and LICENSE)
+/*.md
+!README.md
+!LICENSE.md
+
+# Prevent status/temp files in root
+/STATUS*.txt
+/QUICK_STATUS*
+/*.pid
+/training.pid
+/current_training.log
+
+# Shell scripts should be in scripts/
+/*.sh
+
+# Keep only symlinks for convenience
+!check_training.sh
+!monitor.sh

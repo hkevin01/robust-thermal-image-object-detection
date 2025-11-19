@@ -1,178 +1,121 @@
-# 🚀 Quick Reference - Training Monitoring
+# Quick Reference - Training Monitor
 
-## One-Line Status Checks
+**Training Started**: Nov 12, 2025 10:47 AM EST  
+**Expected Completion**: Nov 15, 2025 1:47 AM EST (62.6 hours)  
+**Script**: `train_optimized_v2.py` ✅ WORKING
+
+---
+
+## 📊 Check Status (Right Now)
 
 ```bash
-# Full dashboard
-./training_dashboard.sh
+# Is training running?
+ps aux | grep train_optimized_v2
 
-# Quick status
-./check_status.sh
+# GPU status
+rocm-smi --showuse --showtemp
 
-# Extract latest metrics
-./extract_metrics.sh
+# Latest progress
+tail -20 logs/training_optimized_v2_*.log | grep -E "Epoch|batch"
 
-# GPU temperature
-rocm-smi --showtemp
-
-# Live training log
-tail -f training_production.log
-
-# Live monitor log  
-tail -f training_monitor.log
-
-# Fan curve log
-sudo tail -f /var/log/amdgpu-fan-curve.log
-
-# Real-time GPU watch
-watch -n1 'rocm-smi --showtemp --showfan --showuse'
-```
-
-## Critical Commands
-
-### Check if Training Running
-```bash
-ps aux | grep "[p]ython.*train_patched"
-```
-
-### Check GPU Health
-```bash
-rocm-smi --showtemp --showfan --showuse --showmeminfo vram
-```
-
-### Check Fan Curve Service
-```bash
-sudo systemctl status amdgpu-fan-curve.service
-```
-
-### View Latest Progress
-```bash
-grep "1/50" training_production.log | tail -1
-```
-
-## Temperature Thresholds
-
-| Sensor | Safe | Warning | Critical |
-|--------|------|---------|----------|
-| Edge | < 70°C | 70-85°C | > 85°C |
-| Junction | < 80°C | 80-95°C | > 95°C |
-| Memory | < 85°C | 85-95°C | > 95°C |
-
-**Current**: 48°C edge, 56°C junction ✅ **EXCELLENT**
-
-## Fan Speed Guide
-
-| Speed | Usage | GPU Temp | Notes |
-|-------|-------|----------|-------|
-| 70% | Minimum (training) | 48-60°C | Optimal balance |
-| 75-85% | Heavy load | 60-70°C | Normal training |
-| 90-95% | Very heavy | 70-80°C | Peak performance |
-| 100% | Critical | > 80°C | Emergency cooling |
-
-**Current**: 74% ✅ **OPTIMAL**
-
-## Training Files
-
-| File | Purpose |
-|------|---------|
-| `train_patched.py` | Training script (MIOpen bypass) |
-| `training_production.log` | Main training log |
-| `training_monitor.log` | 5-minute health checks |
-| `training_metrics.csv` | Extracted metrics (run `./extract_metrics.sh`) |
-| `runs/detect/train2/` | Training outputs |
-| `runs/detect/train2/weights/last.pt` | Latest checkpoint |
-| `runs/detect/train2/weights/best.pt` | Best model |
-| `runs/detect/train2/results.csv` | Per-epoch metrics |
-
-## Expected Timeline
-
-```
-Epoch 1:    ~4.5 hours  (in progress)
-Epoch 10:   ~2 days
-Epoch 25:   ~5 days  
-Epoch 50:   ~10 days (complete)
-```
-
-## Emergency Commands
-
-### If GPU Too Hot (> 90°C)
-```bash
-# Force 100% fan immediately
-echo 255 | sudo tee /sys/class/hwmon/hwmon3/pwm1
-```
-
-### If Training Crashes
-```bash
-# Check last 50 lines of log
-tail -50 training_production.log
-
-# Check for errors
-grep -i "error\|exception\|killed" training_production.log | tail -10
-
-# Resume from checkpoint (if needed)
-source venv/bin/activate
-python << 'PYTHON'
-from ultralytics import YOLO
-model = YOLO('runs/detect/train2/weights/last.pt')
-model.train(resume=True)
-PYTHON
-```
-
-### If System Freezes
-```bash
-# Before reboot: Save PID for investigation
-echo $(ps aux | grep "[p]ython.*train" | awk '{print $2}') > crashed_pid.txt
-
-# After reboot: Check what happened
-dmesg | grep -i "killed\|oom\|gpu"
-```
-
-## Success Indicators
-
-✅ **Training is HEALTHY if**:
-- GPU temperature < 70°C
-- GPU utilization > 80%
-- Loss values decreasing
-- No "error" in recent logs
-- Process still running
-- Fan speed 70-90%
-
-❌ **INVESTIGATE if**:
-- GPU temperature > 85°C
-- GPU utilization < 50%
-- Loss values increasing
-- Errors in logs
-- Process died
-- Fan speed < 50%
-
-## Current Status
-
-```
-Training:  ✅ RUNNING (19+ minutes)
-GPU Temp:  ✅ 48°C edge, 56°C junction
-GPU Util:  ✅ 82-99%
-MIOpen:    ✅ No errors (bypassed)
-Fan Speed: ✅ 74% (70% minimum)
-Losses:    ✅ Decreasing
-```
-
-**Everything looks GREAT! 🚀**
-
-## Contact Info
-
-If you need to stop training:
-```bash
-# Find PID
-cat .training_pid
-
-# Stop gracefully (allows checkpoint save)
-kill -SIGINT $(cat .training_pid)
-
-# Force stop (only if frozen)
-kill -9 $(cat .training_pid)
+# Checkpoints
+ls -lh runs/detect/train_optimized_v2/weights/
 ```
 
 ---
 
-**Last Updated**: November 10, 2025, 10:52 AM  
-**Status**: All systems operational ✅
+## 📈 What to Expect
+
+**Good Training**:
+```
+Epoch  GPU_mem  box_loss  cls_loss  dfl_loss  Instances  Size
+ 1/50    2.1G     0.987     0.845     0.912         42    640: 12% ━━━━  1000/82325 ~18it/s
+```
+
+**Bad Training**:
+```
+Epoch  GPU_mem  box_loss  cls_loss  dfl_loss  Instances  Size
+ 1/50    2.1G       nan       nan       nan         42    640: 0% ━    50/82325 0.0it/s
+```
+
+---
+
+## ⚡ Quick Actions
+
+**Monitor Live**:
+```bash
+tail -f logs/training_optimized_v2_*.log
+```
+
+**Check GPU**:
+```bash
+watch -n 1 rocm-smi --showuse --showtemp
+```
+
+**View Checkpoints**:
+```bash
+ls -lth runs/detect/train_optimized_v2/weights/
+```
+
+**Resume If Stopped**:
+```bash
+cd ~/Projects/robust-thermal-image-object-detection
+source venv-py310-rocm52/bin/activate
+python train_optimized_v2.py
+```
+
+---
+
+## 🎯 Success Metrics
+
+- ✅ **Speed**: ~18 batches/sec
+- ✅ **GPU**: 80-95% usage
+- ✅ **Temp**: 50-70°C
+- ✅ **Memory**: ~2.0-2.5 GB
+- ✅ **Losses**: Numbers (not NaN), decreasing
+
+---
+
+##  📁 Key Files
+
+```
+train_optimized_v2.py          ← Main script
+patches/conv2d_optimized.py    ← Conv2d fallback
+docs/TRAINING_SUCCESS_NOV12.md ← Full documentation
+logs/training_optimized_v2_*.log ← Current log
+runs/detect/train_optimized_v2/ ← Checkpoints & results
+```
+
+---
+
+## 🆘 Troubleshooting
+
+**NaN losses**:
+- Check log for errors before NaN appears
+- May need to lower learning rate (lr0: 0.001)
+
+**Slow speed (<10 batch/s)**:
+- Check GPU usage (should be 80-95%)
+- Check temperature (may be thermal throttling)
+- Check background processes
+
+**Frozentraining (no progress >5 min)**:
+- Check `ps aux | grep python`
+- Check dmesg: `sudo dmesg | tail -50`
+- May need to restart
+
+---
+
+## 📅 Timeline
+
+| Date | Progress | Action |
+|------|----------|--------|
+| Nov 12 | 0% | ✅ Training started |
+| Nov 13 | 38% | Monitor stability |
+| Nov 14 | 76% | Verify checkpoints |
+| Nov 15 | 100% | Evaluate results |
+| Nov 30 | - | Submit to Codabench |
+
+---
+
+**💪 We've got this. The hard part is done.**
